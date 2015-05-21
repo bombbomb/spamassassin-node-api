@@ -24,6 +24,6 @@ ADD / /nodeapp
 RUN rm -rf /nodeapp/node_modules
 RUN cp -r /tmp/node_modules /nodeapp/node_modules
 
-EXPOSE 8080
+EXPOSE 80
 
 CMD ["forever", "/nodeapp/index.js"]
