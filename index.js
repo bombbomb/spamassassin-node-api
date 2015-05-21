@@ -6,6 +6,10 @@ var spamdLib    = require('node-spamd');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+app.get('/health-check', function(request, response) {
+   response.send("Success");
+});
+
 app.post('/evaluate', function(request, response) {
     var spamd = new spamdLib('noreply@example.com' /* sender */, 'noreply@example.com' /* receiver */, 'spamassassin' /* host */, 783 /* port */);
 
