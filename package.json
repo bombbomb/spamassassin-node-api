@@ -1,0 +1,16 @@
+{
+	"name":	"SpamAssassinNodeAPI",
+	"version": "0.1.0",
+	"description":	"A spam blocker with Node + SpamAssassin",
+    "scripts": {
+      "start": "node index.js"
+    },
+	"author": "bombbomb",
+	"license": "ISC",
+	"dependencies": {
+		"express": "*",
+        "forever": "*",
+        "body-parser": "*",
+        "node-spamd": "*"
+	}
+}
