@@ -7,7 +7,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get('/health-check', function(request, response) {
-   response.send("Success");
+   response.send("Success. 1.0.1");
 });
 
 app.post('/evaluate', function(request, response) {
