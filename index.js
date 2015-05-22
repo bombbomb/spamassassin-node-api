@@ -1,7 +1,7 @@
 var express     = require('express');
 var bodyParser  = require('body-parser');
 var app         = express();
-var spamdLib    = require('node-spamd');
+var spamdLib    = require('./spamd');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
