@@ -1,139 +1,106 @@
-// Pulled from: https://github.com/humantech/node-spamd
-// I changed the message to use a guid to prevent spam assassin server from caching.
-// I made a pull request - so if/when that gets fixed I will swap back to the main library.
-
 var net = require('net');
+var uuid = require('node-uuid');
 
-var Spamd = (function(){
+var Spamd = (function() {
+    var INVALID_RECEIVER = 'Invalid sender and receiver';
+    var NO_CALLBACK = 'Evaluate method requires a callback';
+    var TIMEOUT = 'ECONNTIMEOUT';
 
-    var _headers = '';
-    var _sender = 'root';
-    var _receiver = 'root';
-    var _host = 'localhost';
-    var _port = 783;
+    function Spamd(sender, receiver, host, port) {
+        this.sender = sender;
+        this.receiver = receiver;
+        this.host = host;
+        this.port = port;
+    }
 
-    var _instance = null;
-    var _evaluate = {};
-    var _fn = null;
+    Spamd.prototype.evaluate = function (subject, body, callback) {
+        var self = this;
+        var result = {};
+        var headers = '';
 
-    var Constructor = function(sender, receiver, host, port) {
+        if (typeof callback !== 'undefined') {
+            headers += 'Message-ID: <' + uuid.v4() + '@' + this.host + '>\r\n';
+            headers += 'Date: ' + new Date().toUTCString() + '\r\n';
+            headers += 'From: ' + this.sender + '\r\n';
+            headers += 'MIME-Version: 1.0\r\n';
+            headers += 'To: ' + this.receiver + '\r\n';
+            headers += 'Subject: ' + subject + '\r\n';
+            headers += 'Content-Type: text/plain; charset=UTF-8; format=flowed\r\n';
+            headers += 'Content-Transfer-Encoding: quoted-printable\r\n';
+            headers += '\r\n' + body;
 
-        if(typeof sender !== 'undefined' &&
-            typeof receiver !== 'undefined'){
+            var instance = net.connect(this.port, this.host,
+                function () {
+                    connected(instance, headers, self.receiver, self.sender);
+                });
 
-            _sender = sender;
-            _receiver = receiver;
-
-            if(typeof host !== 'undefined'){
-                _host = host;
-            }
-
-            if(typeof port !== 'undefined'){
-                _port = port;
-            }
-
-            var messageId = 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                return v.toString(16);
+            instance.on('end', function () {
+                end(callback, result);
             });
 
-            _headers += 'Message-ID: <' + messageId + '@'+ _host +'>\r\n';
-            _headers += 'Date: ' + new Date().toUTCString() + '\r\n';
-            _headers += 'From: ' + sender + '\r\n';
-            _headers += 'MIME-Version: 1.0\r\n';
-            _headers += 'To: ' + receiver + '\r\n';
+            instance.on('error', function (err) {
+                error(callback, result, err, instance);
+            });
 
-        }else{
-            throw this.INVALID_RECEIVER;
+            instance.on('timeout', function () {
+                timeout(callback, result, instance);
+            });
+
+            instance.on('data', function (line) {
+                data(line, result);
+            });
+        } else {
+            throw NO_CALLBACK;
         }
     };
 
-    var end = function() {
-        _fn(_evaluate);
+    Spamd.prototype.reset = function () {
+        // Deprecated
     };
 
-    var error = function(error) {
-        _fn(_evaluate, error);
-        _instance.end();
-    };
-
-    var timeout = function() {
-        _fn(_evaluate, {code: 'ECONNTIMEOUT'});
-        _instance.end();
-    };
-
-    var data = function (line) {
-
-        line = line.toString().split('\r\n');
-
-        for ( var l in line ){
-
-            var matches;
-            if (matches = line[l].match(/Spam: (True|False) ; (-?\d+\.\d) \/ (-?\d+\.\d)/)) {
-
-                _evaluate.spam = matches[1] == 'True' ? true : false;
-                _evaluate.evaluation = matches[2];
-                _evaluate.allowed = matches[3];
-
-            }else if(line[l].indexOf(',') >= 0){
-
-                _evaluate.rules = line[l].split(',');
-            }
-        }
-    };
-
-    var connected = function(){
-
-        _instance.write("SYMBOLS SPAMC/1.3\r\n", function () {
-            _instance.write("User: " + _receiver + "\r\n\r\n", function () {
-                _instance.write("X-Envelope-From: " + _sender + "\r\n", function ()
-                {
-                    _instance.write(_headers);
-                    _instance.end('\r\n');
+    var connected = function (instance, headers, receiver, sender) {
+        instance.write("SYMBOLS SPAMC/1.3\r\n", function () {
+            instance.write("User: " + receiver + "\r\n\r\n", function () {
+                instance.write("X-Envelope-From: " + sender + "\r\n", function () {
+                    instance.write(headers);
+                    instance.end('\r\n');
                 });
             });
         });
-
     };
 
-    Constructor.prototype = {
+    var end = function (callback, result) {
+        callback(result);
+    };
 
-        constructor: Spamd,
+    var error = function (callback, result, err, instance) {
+        callback(result, err);
+        instance.end();
+    };
 
-        INVALID_RECEIVER: 'Invalid sender and receiver',
-        NO_CALLBACK: 'Evaluate method requires a callback',
+    var timeout = function (callback, result, instance) {
+        callback(result, {code: TIMEOUT});
+        instance.end();
+    };
 
-        evaluate: function(subject, body, fn){
+    var data = function (line, result) {
+        line = line.toString().split('\r\n');
 
-            _headers += 'Subject: ' + subject + '\r\n';
-            _headers += 'Content-Type: text/plain; charset=UTF-8; format=flowed\r\n';
-            _headers += 'Content-Transfer-Encoding: quoted-printable\r\n';
-            _headers += '\r\n' + body;
+        for (var l in line) {
+            var matches;
+            if (matches = line[l].match(/Spam: (True|False) ; (-?\d+\.\d) \/ (-?\d+\.\d)/)) {
 
-            if(typeof fn !== 'undefined'){
+                result.spam = matches[1] == 'True' ? true : false;
+                result.evaluation = matches[2];
+                result.allowed = matches[3];
 
-                _fn = fn;
-                _instance = net.connect(_port, _host, connected);
-
-                _instance.on('end', end);
-                _instance.on('error', error);
-                _instance.on('timeout', timeout);
-                _instance.on('data', data);
-
-            }else{
-                throw this.NO_CALLBACK;
+            } else if (line[l].indexOf(',') >= 0) {
+                result.rules = line[l].split(',');
             }
-
-        },
-
-        reset: function(){
-            _evaluate = {};
-            _fn = null;
         }
     };
 
-    return Constructor;
-
-}());
+    return Spamd;
+})();
 
 module.exports = Spamd;

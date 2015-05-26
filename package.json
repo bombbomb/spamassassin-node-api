@@ -1,6 +1,6 @@
 {
 	"name":	"spamassassin-node-api",
-	"version": "0.2.0",
+	"version": "1.0.0",
 	"description":	"A spam blocker with Node + SpamAssassin",
     "scripts": {
       "start": "node index.js"
@@ -11,6 +11,6 @@
 		"express": "*",
         "forever": "*",
         "body-parser": "*",
-        "node-spamd": "*"
+        "node-uuid": "1.x.x"
 	}
 }
