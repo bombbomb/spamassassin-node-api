@@ -4,6 +4,7 @@ FROM ubuntu:latest
 RUN apt-get -y update
 
 # install node, npm, and upstart
+RUN apt-get -y dist-upgrade
 RUN apt-get -y install nodejs
 RUN apt-get -y install npm
 RUN apt-get -y install upstart
