@@ -1,8 +1,13 @@
 {
-    "service": {
-        "default": {
-            "image": "tutum/hello-world",
-            "ports": ["http://80"]
-        }
+  "service": {
+    "default": {
+      "build": ".",
+      "ports": ["http://80"],
+      "memory": 256
+    },
+    "spamassassin": {
+      "image": "dinkel/spamassassin",
+      "memory": 768
     }
+  }
 }
