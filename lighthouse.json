@@ -1,0 +1,8 @@
+{
+    "service": {
+        "default": {
+            "image": "tutum/hello-world",
+            "ports": ["http://80"]
+        }
+    }
+}
