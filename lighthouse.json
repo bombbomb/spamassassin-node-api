@@ -3,7 +3,8 @@
     "default": {
       "build": ".",
       "ports": ["http://80"],
-      "memory": 256
+      "memory": 256,
+      "links": ["spamassassin"]
     },
     "spamassassin": {
       "image": "dinkel/spamassassin",
